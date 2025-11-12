@@ -1,0 +1,4 @@
+(executable
+  (name main)
+  (libraries ocamba ppxlib)
+  (preprocess (pps ocamba)))
