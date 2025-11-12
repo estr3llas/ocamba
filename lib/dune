@@ -1,14 +1,15 @@
 (library
-  (name rules)
-  (public_name ocamba.rules)
-  (libraries ppxlib)
-  (modules rules)
-  (preprocess (pps ppxlib.metaquot)))
+ (name rules)
+ (public_name ocamba.rules)
+ (libraries ppxlib)
+ (modules rules)
+ (preprocess (pps ppxlib.metaquot)))
 
 (library
-  (name ocamba)
-  (public_name ocamba)
-  (kind ppx_rewriter)
-  (libraries ppxlib ocamba.rules)
-  (modules ocamba)
-  (preprocess (pps ppxlib.metaquot)))
+ (name ocamba)
+ (public_name ocamba)
+ (kind ppx_rewriter)
+ (libraries ppxlib ocamba.rules)
+ (modules ocamba)
+ (preprocess (pps ppxlib.metaquot)))
+

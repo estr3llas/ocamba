@@ -1,4 +1,4 @@
 (executable
-  (name main)
-  (libraries ocamba ppxlib)
-  (preprocess (pps ocamba)))
+ (name main)
+ (preprocess (pps ocamba))
+ ); (flags (:standard -dsource)))
