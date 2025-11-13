@@ -1,10 +1,12 @@
 # ocamba
 
-Ocamba is a library to replace expressions (+, -, ^, &, |) by their MBA equivalents. All of ocamba's work is done in compile time, via PPX.
+ocamba is a library to replace expressions (+, -, ^, &, |) by their MBA (Mixed-Boolean Arithmetics) equivalents. All of ocamba's work is done in compile time, via PPX.
+
+ocamba's MBAs are Linear, not Polynomial.
 
 # Installation
 
-To use Ocamba you must add it as a dependency in your project's dune file and register it as a preprocessor for the relevant executables or libraries.
+To use ocamba, you must add it as a dependency in your project's dune file and register it as a preprocessor for the relevant executables or libraries.
 
 ```Scheme
 (executable
@@ -12,19 +14,19 @@ To use Ocamba you must add it as a dependency in your project's dune file and re
   (preprocess (pps ocamba))
 )
 
-; Optionally, to see the transformed code after invoking "dune build", use:
+; Optionally you can see the transformed code after invoking "dune build", use:
 ; (flags :standard -source)
 ```
 
 # Usage
 
-Usage is exemplified in this project's [main.ml](https://github.com/estr3llas/ocamba/blob/main/bin/main.ml).
+Usage is exemplified within this project's [main.ml](https://github.com/estr3llas/ocamba/blob/main/bin/main.ml).
 
-The extension structure is the following:
+The extension's structure follows:
 
 `%mba [{N}, {E}]`
 
-Where `N` controls the recursion depth of the transformations, and `E` is the expression to be transformed.
+Where `{N}` controls the recursion depth of the transformations, and `{E}` is the expression to be transformed.
 
 # Example
 
