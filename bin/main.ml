@@ -8,7 +8,7 @@ let normal_sub = x - y
 let obfuscated_sub = [%mba (x - y)]
 
 let normal_xor = x lxor y
-let obfuscated_xor = [%mba (20, x lxor y)]
+let obfuscated_xor = [%mba (3, x lxor y)]
 
 
 let () =

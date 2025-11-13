@@ -31,5 +31,48 @@ Where `N` controls the recursion depth of the transformations, and `E` is the ex
 An example of a transformed expression is:
 
 ```ocaml
+let normal_xor = x lxor y
 
+let obfuscated_xor =
+  ((2 * (-1)) -
+     ((lnot
+         ((((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))) +
+             (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))
+                land
+                (lnot
+                   ((((lnot x) lor y) + (x land (lnot y))) -
+                      (lnot (x lxor y))))))
+            -
+            (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))
+               land
+               ((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))))))
+        lor
+        ((((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))) +
+            (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))
+               land
+               (lnot
+                  ((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))))))
+           -
+           (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))) land
+              ((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))))))
+    -
+    (((((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))) +
+         (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))) land
+            (lnot
+               ((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))))))
+        -
+        (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))) land
+           ((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))))
+       lor
+       (lnot
+          ((((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y))) +
+              (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))
+                 land
+                 (lnot
+                    ((((lnot x) lor y) + (x land (lnot y))) -
+                       (lnot (x lxor y))))))
+             -
+             (((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))
+                land
+                ((((lnot x) lor y) + (x land (lnot y))) - (lnot (x lxor y)))))))
 ```
