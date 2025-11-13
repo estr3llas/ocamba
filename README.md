@@ -20,7 +20,7 @@ To use Ocamba you must add it as a dependency in your project's dune file and re
 
 Usage is exemplified in this project's [main.ml](https://github.com/estr3llas/ocamba/blob/main/bin/main.ml).
 
-The extension structure is the following
+The extension structure is the following:
 
 `%mba [{N}, {E}]`
 
