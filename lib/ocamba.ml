@@ -2,6 +2,9 @@ open Ppxlib
 let loc = Location.none
 open (val Ast_builder.make loc : Ast_builder.S)
 
+let () =
+  Random.self_init ()
+
 let add : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr ([%e x] land [%e y]) + ([%e x] lor [%e y])]);
   (fun x y -> [%expr ([%e x] lxor [%e y]) + 2 * ([%e x] land [%e y])]);
@@ -78,29 +81,44 @@ let xor : (expression -> expression -> expression) array = [|
 
 let choose arr =
   let n = Array.length arr in
-  if n = 0 then failwith "[-] No rules available for the given expression."
+   if n = 0 then failwith "[-] No rules available for the given expression."
   else arr.(Random.int n)
 
+let apply_one_rule ~loc ~op e1 e2 =
+  match op with
+  | "+" -> (choose add) e1 e2
+  | "-" -> (choose sub) e1 e2
+  | "land" -> (choose _and) e1 e2
+  | "lor" -> (choose _or) e1 e2
+  | "lxor" -> (choose xor) e1 e2
+  | _ -> [%expr [%e e1] % op % [%e e2]]
+
 let transform ~loc ~op ~depth e1 e2 =
-  let rec apply_rule depth e1 e2 =
-    if depth <= 0 then
-      [%expr [%e e1] % op % [%e e2]]
+  let rec apply_n_times n current_expr =
+    if n <= 0 then
+      current_expr
     else
-      let rule_fun = match op with
-        | "+" -> choose add
-        | "-" -> choose sub
-        | "land" -> choose _and
-        | "lor" -> choose _or
-        | "lxor" -> choose xor
-        | _ -> (fun x y -> [%expr [%e x] + [%e y]]) 
+      let new_expr = 
+          if n = depth then
+              apply_one_rule ~loc ~op e1 e2
+          else
+              apply_one_rule ~loc ~op current_expr current_expr
       in
-      let new_expr = rule_fun e1 e2 in
-      apply_rule (depth - 1) new_expr new_expr
+      apply_n_times (n - 1) new_expr
   in
-  apply_rule depth e1 e2
+  
+  if depth <= 0 then 
+    [%expr [%e e1] % op % [%e e2]]
+  else
+    apply_n_times depth (apply_one_rule ~loc ~op e1 e2)
 
+let extract_int_or_default ~default_val expr =
+  match expr.pexp_desc with
+  | Pexp_constant (Pconst_integer (s, _)) ->
+    (try int_of_string s with Failure _ -> default_val)
+  | _ -> default_val
 
-let mapper =
+let transform_mapper depth =
   object
     inherit Ast_traverse.map as super
 
@@ -108,42 +126,38 @@ let mapper =
       let expr = super#expression expr in
       match expr.pexp_desc with
       | Pexp_apply ({ pexp_desc = Pexp_ident { txt = Lident op; _ }; _ }, args) ->
-          (match op with
-           | "+" | "-" | "land" | "lor" | "lxor" ->
-               (match args with
-                | [(_, e1); (_, e2)] -> 
-                    transform ~loc:expr.pexp_loc ~op ~depth:1 e1 e2
-                | [(_, e1); (_, e2); (_, e3)] -> 
-                    let depth = match e3 with
-                      | { pexp_desc = Pexp_constant (Pconst_integer (s, _)); _ } -> 
-                          int_of_string s
-                      | _ -> 1 in
-                    transform ~loc:expr.pexp_loc ~op ~depth e1 e2
-                | _ -> expr)
-           | _ -> expr)
+        (match op with
+          | "+" | "-" | "land" | "lor" | "lxor" ->
+            (match args with
+              | [(_, e1); (_, e2)] ->
+                  transform ~loc:expr.pexp_loc ~op ~depth e1 e2
+              | _ -> expr)
+          | _ -> expr)
       | _ -> expr
   end
-
-
-
 
 let mba_extension =
   Extension.declare
     "mba"
     Extension.Context.expression
-    Ast_pattern.(single_expr_payload (__ ^:: opt __))
-    (fun ~loc:_ ~path:_ expr ->
-      match expr.pexp_desc with
-      | Pexp_apply ({ pexp_desc = Pexp_ident { txt = Lident "mba"; _ }; _ }, args) ->
-          (match args with
-           | [(_, e1); (_, e2)] -> 
-               transform ~loc:expr.pexp_loc ~op:"lxor" ~depth:1 e1 e2
-           | [(_, e1); (_, e2); (_, e3)] -> 
-               let depth = match e3 with
-                 | { pexp_desc = Pexp_constant (Pconst_integer (s, _)) } -> 
-                     int_of_string s
-                 | _ -> 1 in
-               transform ~loc:expr.pexp_loc ~op:"lxor" ~depth e1 e2
-           | _ -> expr)
-      | _ -> expr)
+    Ast_pattern.(single_expr_payload __)
+    (fun ~loc ~path:_ payload_expr ->
+      
+      match payload_expr.pexp_desc with
+      | Pexp_tuple [depth_expr; target_expr] ->
+        let depth = extract_int_or_default ~default_val:1 depth_expr in
+          (transform_mapper depth)#expression target_expr 
 
+      | Pexp_apply ({ pexp_desc = Pexp_ident { txt = Lident op; _ }; _ }, args)
+        when op = "+" || op = "-" || op = "land" || op = "lor" || op = "lxor" ->
+          (match args with
+            | [(_, e1); (_, e2)] ->
+                transform ~loc ~op ~depth:1 e1 e2
+            | _ -> payload_expr)
+
+      | _ ->
+        Location.raise_errorf ~loc "%%mba expects either: [%%mba (N, E)] (tuple) or [%%mba E]"
+    )
+
+let () =
+  Driver.register_transformation "mba" ~rules:[Context_free.Rule.extension mba_extension]
