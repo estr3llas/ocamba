@@ -24,7 +24,7 @@ Usage is exemplified within this project's [main.ml](https://github.com/estr3lla
 
 The extension's structure follows:
 
-`%mba [{N}, {E}]`
+`[%mba [{N}, {E}]`
 
 Where `{N}` controls the recursion depth of the transformations, and `{E}` is the expression to be transformed.
 
