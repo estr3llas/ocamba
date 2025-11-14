@@ -2,13 +2,13 @@ let x = 42
 let y = 13
 
 let normal_add = x + y
-let obfuscated_add = [%mba (1, x + y)]
+let obfuscated_add = [%mba (2, x + y)]
 
 let normal_sub = x - y
 let obfuscated_sub = [%mba (x - y)]
 
 let normal_xor = x lxor y
-let obfuscated_xor = [%mba (3, x lxor y)]
+let obfuscated_xor = [%mba (1, x lxor y)]
 
 
 let () =

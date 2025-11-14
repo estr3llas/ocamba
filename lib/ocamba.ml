@@ -2,10 +2,22 @@ open Ppxlib
 let loc = Location.none
 open (val Ast_builder.make loc : Ast_builder.S)
 
-let () =
-  Random.self_init ()
+let random_state = ref None
 
-let add : (expression -> expression -> expression) array = [|
+let get_random_state () =
+  match !random_state with
+  | Some state -> state
+  | None ->
+    let new_state = Random.State.make_self_init () in
+    random_state := Some new_state;
+    new_state
+
+let choose arr =
+    let state = get_random_state () in
+    let n = Random.State.int state (Array.length arr) in
+    Array.get arr n
+
+let add_expr : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr ([%e x] land [%e y]) + ([%e x] lor [%e y])]);
   (fun x y -> [%expr ([%e x] lxor [%e y]) + 2 * ([%e x] land [%e y])]);
   (fun x y -> [%expr ([%e x] lor [%e y]) + (lnot [%e x] lor [%e y]) - (lnot [%e x])]);
@@ -30,13 +42,13 @@ let add : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr 2 * (lnot ([%e x] lxor [%e y])) + 3 * (lnot [%e x] land [%e y]) + 3 * ([%e x] land lnot [%e y]) - 2 * (lnot ([%e x] land [%e y]))]);
 |]
 
-let sub : (expression -> expression -> expression) array = [|
+let sub_expr : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr ([%e x] lxor - [%e y]) + 2 * ([%e x] land -[%e y])]);
   (fun x y -> [%expr ([%e x] + 1) + lnot [%e y]]);
   (fun x y -> [%expr [%e x] land lnot [%e y] - lnot [%e x] land [%e y]]);
 |]
 
-let _and : (expression -> expression -> expression) array = [|
+let and_expr : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr (lnot [%e x] lor [%e y]) - lnot [%e x]]);
   (fun x y -> [%expr ((lnot [%e x] lor [%e y]) + [%e x]) + 1]);
   (fun x y -> [%expr -([%e x] lor [%e y]) + [%e y] + [%e x]]);
@@ -48,7 +60,7 @@ let _and : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr -(lnot ([%e x] land [%e y])) + (lnot [%e x] lor [%e y]) + ([%e x] land lnot [%e y])]);
 |]
 
-let _or : (expression -> expression -> expression) array = [|
+let or_expr : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr ([%e x] land lnot [%e y]) + [%e y]]);
   (fun x y -> [%expr (([%e x] + [%e y]) + 1) + ((-[%e x] - 1) lor (-[%e y] - 1))]);
   (fun x y -> [%expr ([%e x] lxor [%e y]) + [%e y] - (lnot [%e x] land [%e y])]);
@@ -59,7 +71,7 @@ let _or : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr (lnot [%e x] land [%e y]) + ([%e x] land lnot [%e y]) + ([%e x] land [%e y])]);
 |]
 
-let xor : (expression -> expression -> expression) array = [|
+let xor_expr : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr (lnot [%e x] land [%e y]) lor ([%e x] land lnot [%e y])]);
   (fun x y -> [%expr ([%e x] lor [%e y]) - ([%e x] land [%e y])]);
   (fun x y -> [%expr ([%e x] lor [%e y]) - [%e y] + (lnot [%e x] land [%e y])]);
@@ -79,18 +91,13 @@ let xor : (expression -> expression -> expression) array = [|
 |]
 
 
-let choose arr =
-  let n = Array.length arr in
-   if n = 0 then failwith "[-] No rules available for the given expression."
-  else arr.(Random.int n)
-
 let apply_one_rule ~loc ~op e1 e2 =
   match op with
-  | "+" -> (choose add) e1 e2
-  | "-" -> (choose sub) e1 e2
-  | "land" -> (choose _and) e1 e2
-  | "lor" -> (choose _or) e1 e2
-  | "lxor" -> (choose xor) e1 e2
+  | "+" -> (choose add_expr) e1 e2
+  | "-" -> (choose sub_expr) e1 e2
+  | "land" -> (choose and_expr) e1 e2
+  | "lor" -> (choose or_expr) e1 e2
+  | "lxor" -> (choose xor_expr) e1 e2
   | _ -> [%expr [%e e1] % op % [%e e2]]
 
 let transform ~loc ~op ~depth e1 e2 =
@@ -136,7 +143,7 @@ let transform_mapper depth =
       | _ -> expr
   end
 
-let mba_extension =
+let ext =
   Extension.declare
     "mba"
     Extension.Context.expression
@@ -160,4 +167,4 @@ let mba_extension =
     )
 
 let () =
-  Driver.register_transformation "mba" ~rules:[Context_free.Rule.extension mba_extension]
+  Driver.register_transformation "mba" ~rules:[Context_free.Rule.extension ext]
