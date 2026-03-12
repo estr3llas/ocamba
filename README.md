@@ -33,13 +33,40 @@ Where `{N}` controls the recursion depth of the transformations, and `{E}` is th
 An example of a transformed expression is:
 
 ```ocaml
-let normal_add = x + y
-
-let obfuscated_add =
-  ((((((lnot x) land y) + (x land (lnot y))) + (2 * (x land y))) lor
-      ((((lnot x) land y) + (x land (lnot y))) + (2 * (x land y))))
-     + ((((lnot x) land y) + (x land (lnot y))) + (2 * (x land y))))
-    -
-    ((lnot ((((lnot x) land y) + (x land (lnot y))) + (2 * (x land y)))) land
-       ((((lnot x) land y) + (x land (lnot y))) + (2 * (x land y))))
+let normal_xor = x lxor y
+let obfuscated_xor =
+  ((-1) -
+     ((lnot
+         ((((((-1) - ((lnot x) lor y)) + ((lnot x) land y)) lor
+              (((-1) - ((lnot x) lor y)) + ((lnot x) land y)))
+             -
+             ((lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y))) lor
+                (((-1) - ((lnot x) lor y)) + ((lnot x) land y))))
+            + (lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y)))))
+        lor
+        ((((((-1) - ((lnot x) lor y)) + ((lnot x) land y)) lor
+             (((-1) - ((lnot x) lor y)) + ((lnot x) land y)))
+            -
+            ((lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y))) lor
+               (((-1) - ((lnot x) lor y)) + ((lnot x) land y))))
+           + (lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y))))))
+    +
+    ((lnot
+        ((((((-1) - ((lnot x) lor y)) + ((lnot x) land y)) lor
+             (((-1) - ((lnot x) lor y)) + ((lnot x) land y)))
+            -
+            ((lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y))) lor
+               (((-1) - ((lnot x) lor y)) + ((lnot x) land y))))
+           + (lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y)))))
+       land
+       ((((((-1) - ((lnot x) lor y)) + ((lnot x) land y)) lor
+            (((-1) - ((lnot x) lor y)) + ((lnot x) land y)))
+           -
+           ((lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y))) lor
+              (((-1) - ((lnot x) lor y)) + ((lnot x) land y))))
+          + (lnot (((-1) - ((lnot x) lor y)) + ((lnot x) land y)))))
 ```
+
+If one tries to open the obfuscated program in a disassembler, they would see the following:
+
+![Binja Example](/images/ocamba_binja.png)
