@@ -19,7 +19,7 @@
  (name ocamba)
  (synopsis "Generate linear mixed boolean arithmetic expressions through pattern matching.")
  (description "Generate linear mixed boolean arithmetic expressions through pattern matching.")
- (depends ocaml)
+ (depends ocaml alcotest)
  (tags
   ("mba" "obfuscation")))
 

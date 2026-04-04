@@ -14,6 +14,7 @@ bug-reports: "https://github.com/estr3llas/ocamba/issues"
 depends: [
   "dune" {>= "3.19"}
   "ocaml"
+  "alcotest"
   "odoc" {with-doc}
 ]
 build: [
