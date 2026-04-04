@@ -19,7 +19,7 @@ let choose arr =
 
 let add_expr : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr ([%e x] land [%e y]) + ([%e x] lor [%e y])]);
-  (fun x y -> [%expr ([%e x] lxor [%e y]) + 2 * ([%e x] land [%e y])]);
+
   (fun x y -> [%expr ([%e x] lor [%e y]) + (lnot [%e x] lor [%e y]) - (lnot [%e x])]);
   (fun x y -> [%expr ([%e x] lor [%e y]) + [%e y] - (lnot [%e y] land [%e x])]);
   (fun x y -> [%expr ([%e x] lxor [%e y]) + 2 * [%e y] - 2 * (lnot [%e x] land [%e y])]);
@@ -98,14 +98,14 @@ let apply_one_rule ~loc ~op e1 e2 =
   | "land" -> (choose and_expr) e1 e2
   | "lor" -> (choose or_expr) e1 e2
   | "lxor" -> (choose xor_expr) e1 e2
-  | _ -> [%expr [%e e1] % op % [%e e2]]
+  | _ -> Location.raise_errorf ~loc "unknown operator: %s" op
 
 let transform ~loc ~op ~depth e1 e2 =
   let rec apply_n_times n current_expr =
     if n <= 0 then
       current_expr
     else
-      let new_expr = 
+      let new_expr =
           if n = depth then
               apply_one_rule ~loc ~op e1 e2
           else
@@ -113,8 +113,8 @@ let transform ~loc ~op ~depth e1 e2 =
       in
       apply_n_times (n - 1) new_expr
   in
-  
-  if depth <= 0 then 
+
+  if depth <= 0 then
     [%expr [%e e1] % op % [%e e2]]
   else
     apply_n_times depth (apply_one_rule ~loc ~op e1 e2)
@@ -149,11 +149,11 @@ let ext =
     Extension.Context.expression
     Ast_pattern.(single_expr_payload __)
     (fun ~loc ~path:_ payload_expr ->
-      
+
       match payload_expr.pexp_desc with
       | Pexp_tuple [depth_expr; target_expr] ->
         let depth = extract_int_or_default ~default_val:1 depth_expr in
-          (transform_mapper depth)#expression target_expr 
+          (transform_mapper depth)#expression target_expr
 
       | Pexp_apply ({ pexp_desc = Pexp_ident { txt = Lident op; _ }; _ }, args)
         when op = "+" || op = "-" || op = "land" || op = "lor" || op = "lxor" ->
