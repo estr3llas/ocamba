@@ -21,9 +21,9 @@ let add_expr : (expression -> expression -> expression) array = [|
   (fun x y -> [%expr ([%e x] land [%e y]) + ([%e x] lor [%e y])]);
 
   (fun x y -> [%expr ([%e x] lor [%e y]) + (lnot [%e x] lor [%e y]) - (lnot [%e x])]);
-  (fun x y -> [%expr ([%e x] lor [%e y]) + [%e y] - (lnot [%e y] land [%e x])]);
+  (fun x y -> [%expr ([%e x] lxor [%e y]) + 2 * ([%e x] land [%e y])]);
   (fun x y -> [%expr ([%e x] lxor [%e y]) + 2 * [%e y] - 2 * (lnot [%e x] land [%e y])]);
-  (fun x y -> [%expr [%e y] + ([%e x] land lnot [%e y]) + ([%e x] lxor [%e y])]);
+  (fun x y -> [%expr 2 * ([%e x] lor [%e y]) - ([%e x] lxor [%e y])]);
   (fun x y -> [%expr ([%e x] lor [%e y]) + [%e y] - (lnot [%e x] land [%e y])]);
   (fun x y -> [%expr ([%e x] lor [%e y]) + (lnot [%e x] lor [%e y]) - (lnot [%e x])]);
   (fun x y -> [%expr -1 + [%e y] - (lnot [%e x])]);
@@ -100,24 +100,34 @@ let apply_one_rule ~loc ~op e1 e2 =
   | "lxor" -> (choose xor_expr) e1 e2
   | _ -> Location.raise_errorf ~loc "unknown operator: %s" op
 
-let transform ~loc ~op ~depth e1 e2 =
-  let rec apply_n_times n current_expr =
-    if n <= 0 then
-      current_expr
-    else
-      let new_expr =
-          if n = depth then
-              apply_one_rule ~loc ~op e1 e2
-          else
-              apply_one_rule ~loc ~op current_expr current_expr
-      in
-      apply_n_times (n - 1) new_expr
-  in
+let is_mba_op = function
+  | "+" | "-" | "land" | "lor" | "lxor" -> true
+  | _ -> false
 
+(* [depth] levels of rewriting. Level 1 is one rule application. Each further level rewrites the
+   operators introduced by the previous one; the original operands [e1]/[e2] are shared (physically)
+   by every rule and are left untouched. Depth <= 0 leaves the expression as written. *)
+let rec transform ~loc ~op ~depth e1 e2 =
   if depth <= 0 then
-    [%expr [%e e1] % op % [%e e2]]
+    eapply (pexp_ident { txt = Lident op; loc }) [e1; e2]
   else
-    apply_n_times depth (apply_one_rule ~loc ~op e1 e2)
+    let rewritten = apply_one_rule ~loc ~op e1 e2 in
+    if depth = 1 then
+      rewritten
+    else
+      (object
+        inherit Ast_traverse.map as super
+
+        method! expression expr =
+          if expr == e1 || expr == e2 then expr
+          else
+            let expr = super#expression expr in
+            match expr.pexp_desc with
+            | Pexp_apply ({ pexp_desc = Pexp_ident { txt = Lident op; _ }; _ }, [ (_, a); (_, b) ])
+              when is_mba_op op ->
+                transform ~loc:expr.pexp_loc ~op ~depth:(depth - 1) a b
+            | _ -> expr
+      end)#expression rewritten
 
 let extract_int_or_default ~default_val expr =
   match expr.pexp_desc with
